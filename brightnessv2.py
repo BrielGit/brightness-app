@@ -3,11 +3,15 @@ from tkinter import *
 import tkinter as tk
 import threading
 
-brightness = sbc.get_brightness()
+# Get the list of monitors
+monitors = sbc.list_monitors()
+
+# Initialize the brightness for the first monitor
+brightness = sbc.get_brightness(display=monitors[0])
 
 def change_brightness(value):
-    global slider_value
-    threading.Thread(target=lambda: sbc.set_brightness(slider_value.get())).start()
+    global slider_value, selected_monitor
+    threading.Thread(target=lambda: sbc.set_brightness(slider_value.get(), display=selected_monitor.get())).start()
 
 def center_window(width, height):
     screen_width = master.winfo_screenwidth()
@@ -21,7 +25,6 @@ def center_window(width, height):
     master.geometry(f'{width}x{height}+{x3}+{y3}')
 
 def jump_to_position(event):
-    # Calculate the new slider value based on the click position
     slider_length = slider.winfo_width()
     click_position = event.x
     new_value = (click_position / slider_length) * 100
@@ -41,12 +44,24 @@ def entry_useful(event):
 def validate_entry(value):
     return value.isdigit() or value == ''
 
+def monitor_changed(event):
+    global brightness
+    # Update the brightness level to match the selected monitor
+    brightness = sbc.get_brightness(display=selected_monitor.get())
+    slider.set(brightness)
+    display_entry_value()
+
 master = tk.Tk()
-center_window(400, 150)
+center_window(400, 200)
 master.title('Brightness Controller')
 master.configure(bg="#2b2b2b")
 slider_value = tk.IntVar(value=0)
-master.resizable(False, False)
+
+# Create a dropdown for selecting the monitor
+selected_monitor = tk.StringVar(value=monitors[0])
+monitor_selector = OptionMenu(master, selected_monitor, *monitors)
+monitor_selector.config(bg="#3a3a3a", fg="white", font=("Arial", 10))
+monitor_selector.pack(pady=(10, 8))
 
 label_sun = Label(master, text="☀",background='#2b2b2b', fg='white', font=("Arial", 24))
 label_sun.pack(pady=(10, 8), padx=(7, 0))
@@ -57,7 +72,6 @@ slider.pack()
 
 vcmd = (master.register(validate_entry), '%P')
 entry_value = Entry(master, validate='key', validatecommand=vcmd, width=8, justify='center', font=('Courier', 12), bd=4)
-# entry_value.insert(0, brightness)
 entry_value.pack(pady=(15, 0))
 
 # Bind the brightness change to slider release
@@ -67,7 +81,7 @@ slider.bind("<ButtonRelease-1>", change_brightness)
 slider.bind("<Button-1>", jump_to_position)
 entry_value.bind("<Return>", entry_useful)  # Bind the "Enter" key to the entry box
 
-
-# Being a cringe simp
+# Update brightness when the monitor selection changes
+selected_monitor.trace("w", monitor_changed)
 
 master.mainloop()
